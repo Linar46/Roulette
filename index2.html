@@ -189,7 +189,9 @@
         const maxDuration = 15000; 
         const duration =
           parseInt(document.getElementById("duration").value) || maxDuration;
-        const scaledDuration = Math.min(rawDuration / maxDuration, 1); 
+
+        const scaledDuration = Number((Math.min(duration, maxDuration) / maxDuration).toFixed(2));
+
         const spinDistance = 720 + scaledDuration * 720 + 180;
 
 
