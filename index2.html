@@ -182,9 +182,20 @@
         const active = slots.filter((s) => !s.lost);
         if (active.length <= 1) return alert("Победитель: " + active[0].name);
 
+
+
+
+        
+        const maxDuration = 15000; 
         const duration =
-          parseInt(document.getElementById("duration").value) || 4200;
-        const spinDistance = 720 + Math.random() * 720 + 180;
+          parseInt(document.getElementById("duration").value) || maxDuration;
+        const scaledDuration = Math.min(rawDuration / maxDuration, 1); 
+        const spinDistance = 720 + scaledDuration * 720 + 180;
+
+
+
+
+
         const startRot = currentRotation;
         const endRot = startRot + spinDistance;
 
