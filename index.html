@@ -165,7 +165,7 @@
           ctx.fill();
 
           ctx.strokeStyle = "#111";
-          ctx.lineWidth = slot === highlight ? 8 : 5; // slightly thicker border when highlighted
+          ctx.lineWidth = 2;
           ctx.stroke();
 
           // Text
@@ -198,7 +198,7 @@
       // ==================== SPIN ====================
       function spinWheel() {
         const active = slots.filter((s) => !s.lost);
-        if (active.length <= 1) return alert("Победитель: " + active[0].name);
+        if (active.length <= 1) return alert("Winner: " + active[0].name);
 
         const maxDuration = 15000;
         const duration = parseInt(document.getElementById("duration").value) || maxDuration;
