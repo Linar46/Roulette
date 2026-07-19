@@ -92,6 +92,13 @@
         e.returnValue = "Progress would be lost!";
       });
 
+      // ==================== RANDOM HELPER (from 1.js) ====================
+      const getRandomInt = (min, max) => {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      };
+
       // ==================== Fair inverse proportion ====================
       function calculateAngles() {
         const active = slots.filter((s) => !s.lost);
@@ -155,7 +162,6 @@
           ctx.arc(cx, cy, r, start, end);
           ctx.closePath();
 
-          // === SLIGHT HIGHLIGHT ===
           let fillColor = slot.color;
           if (slot === highlight) {
             fillColor = lightenColor(slot.color, 0.20);
@@ -168,7 +174,6 @@
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          // Text
           ctx.save();
           ctx.translate(cx, cy);
           ctx.rotate(start + ((slot.angle / 2) * Math.PI) / 180);
@@ -188,8 +193,6 @@
         ctx.moveTo(cx, cy * 0.2);
         ctx.lineTo(cx - cx * 0.05, cy * 0.1);
         ctx.lineTo(cx + cx * 0.05, cy * 0.1);
-        // ctx.lineTo(cx - 25, cy - r + 20);
-        // ctx.lineTo(cx + 25, cy - r + 20);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
@@ -204,7 +207,10 @@
         const duration = parseInt(document.getElementById("duration").value) || maxDuration;
         const scaledDuration = Number((Math.min(duration, maxDuration) / maxDuration).toFixed(2));
 
-        const spinDistance = 720 + scaledDuration * 720 + 180;
+        // === MODIFIED WITH ~1% RANDOMNESS ===
+        const spinDistanceBase = 720 + scaledDuration * 720 + 180;
+        const randomness = 0.01; // 1% variation
+        const spinDistance = spinDistanceBase * (1 + (Math.random() * 2 - 1) * randomness);
 
         const startRot = currentRotation;
         const endRot = startRot + spinDistance;
