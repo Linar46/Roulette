@@ -1,4 +1,4 @@
-# Fair Auction Roulette varations
+# Fair Auction Roulette variations
 * **index.html** for 99% deterministic
 * **index-random.html** - fully random
 * **one-spin.html** - SINGLE SPIN with 99% determinism
