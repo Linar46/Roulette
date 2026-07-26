@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Roulette — Proportional chances (1 spin)</title>
+    <style>
+      body {
+        font-family: Arial;
+        text-align: center;
+        background: #111;
+        color: #fff;
+      }
+      canvas {
+        border: 8px solid #333;
+        border-radius: 50%;
+        margin: 20px;
+      }
+      input,
+      button {
+        margin: 5px;
+        padding: 8px 12px;
+        font-size: 16px;
+      }
+      input[type="number"]::-webkit-outer-spin-button,
+      input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      .controls {
+        margin: 15px;
+      }
+      .slot {
+        display: flex;
+        gap: 10px;
+        margin: 8px 0;
+        align-items: center;
+        padding: 8px;
+        border-radius: 6px;
+      }
+      #currentSlot {
+        font-size: 26px;
+        min-height: 40px;
+        margin: 15px;
+        font-weight: bold;
+        color: #ffff88;
+      }
+      #winner {
+        font-size: 28px;
+        color: #4caf50;
+        font-weight: bold;
+        margin: 10px;
+        min-height: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Proportional Roulette Wheel (1 spin)</h1>
+    <div id="currentSlot">Ready for spin...</div>
+    <div id="winner"></div>
+
+    <canvas id="wheel" width="600" height="600"></canvas>
+
+    <div class="controls">
+      <label
+        >Duration (ms):
+        <input
+          type="number"
+          id="duration"
+          value="5400"
+          min="1000"
+          max="15000"
+          step="100"
+      /></label>
+      <button onclick="spinWheel()">SPIN</button>
+      <button onclick="addSlot()">+ ADD SLOT</button>
+      <button onclick="resetAll()">RESET</button>
+    </div>
+
+    <div id="slotList"></div>
+
+    <script>
+      // ==================== DATA ====================
+      let slots = [
+        { name: "fifty 1", value: 50, color: "#f44336" },
+        { name: "fifty 2", value: 50, color: "#e91e63" },
+        { name: "fifty 3", value: 50, color: "#9c27b0" },
+        { name: "150", value: 150, color: "#673ab7" },
+      ];
+
+      let currentRotation = 0;
+      let isSpinning = false;
+
+      window.addEventListener("beforeunload", (e) => {
+        e.preventDefault();
+        e.returnValue = "Progress would be lost!";
+      });
+
+      // ==================== PROPORTIONAL CHANCES (higher value = bigger slice) ====================
+      function calculateAngles() {
+        const total = slots.reduce((sum, s) => sum + Math.max(s.value, 0.1), 0);
+
+        let cum = 0;
+        slots.forEach((slot) => {
+          slot.startAngle = cum;
+          slot.angle = (Math.max(slot.value, 0.1) / total) * 360;
+          cum += slot.angle;
+        });
+      }
+
+      function getSlotUnderPointer() {
+        calculateAngles();
+        const pointerAngle = 270;
+        const wheelPos = ((currentRotation % 360) + 360) % 360;
+        const target = (pointerAngle - wheelPos + 360) % 360;
+
+        let cum = 0;
+        for (let slot of slots) {
+          if (target >= cum && target < cum + slot.angle) return slot;
+          cum += slot.angle;
+        }
+        return slots[slots.length - 1];
+      }
+
+      // Helper: Slightly brighten a hex color
+      function lightenColor(hex, percent) {
+        let r = parseInt(hex.slice(1, 3), 16);
+        let g = parseInt(hex.slice(3, 5), 16);
+        let b = parseInt(hex.slice(5, 7), 16);
+
+        r = Math.min(255, Math.floor(r + (255 - r) * percent));
+        g = Math.min(255, Math.floor(g + (255 - g) * percent));
+        b = Math.min(255, Math.floor(b + (255 - b) * percent));
+
+        return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+      }
+
+      function drawWheel(highlight = null) {
+        const canvas = document.getElementById("wheel");
+        const ctx = canvas.getContext("2d");
+        const cx = canvas.width / 2,
+          cy = canvas.height / 2,
+          r = 260;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        calculateAngles();
+
+        slots.forEach((slot) => {
+          const start = ((slot.startAngle + currentRotation) * Math.PI) / 180;
+          const end = start + (slot.angle * Math.PI) / 180;
+
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, r, start, end);
+          ctx.closePath();
+
+          let fillColor = slot.color;
+          if (slot === highlight) {
+            fillColor = lightenColor(slot.color, 0.25);
+          }
+
+          ctx.fillStyle = fillColor;
+          ctx.fill();
+
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Label
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(start + (slot.angle / 2) * Math.PI / 180);
+          ctx.textAlign = "right";
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 18px Arial";
+          ctx.fillText(slot.name, r - 35, 6);
+          ctx.restore();
+        });
+
+        // Pointer (top)
+        ctx.fillStyle = "#ff00ff";
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy * 0.2);
+        ctx.lineTo(cx - cx * 0.05, cy * 0.1);
+        ctx.lineTo(cx + cx * 0.05, cy * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // ==================== SINGLE SPIN ====================
+      function spinWheel() {
+        if (isSpinning) return;
+        if (slots.length === 0) return alert("No slots!");
+
+        isSpinning = true;
+        document.getElementById("winner").textContent = "";
+
+        const maxDuration = 15000;
+        const duration = parseInt(document.getElementById("duration").value) || 5400;
+        const scaledDuration = Math.min(duration, maxDuration) / maxDuration;
+
+        // Base spin distance + small randomness
+        const spinDistanceBase = 720 + scaledDuration * 720 + 180;
+        const randomness = 0.02;
+        const spinDistance = spinDistanceBase * (1 + (Math.random() * 2 - 1) * randomness);
+
+        const startRot = currentRotation;
+        const endRot = startRot + spinDistance;
+        const startTime = Date.now();
+
+        function animate() {
+          const elapsed = Date.now() - startTime;
+          let t = Math.min(elapsed / duration, 1);
+          // Ease-out
+          t = 1 - Math.pow(1 - t, 4);
+
+          currentRotation = startRot + spinDistance * t;
+
+          const slot = getSlotUnderPointer();
+          document.getElementById("currentSlot").textContent = "→ " + slot.name;
+
+          drawWheel(slot);
+
+          if (t < 1) {
+            requestAnimationFrame(animate);
+          } else {
+            currentRotation = endRot;
+            const winner = getSlotUnderPointer();
+            document.getElementById("currentSlot").textContent = "Winner!";
+            document.getElementById("winner").textContent = `🎉 ${winner.name} 🎉`;
+            drawWheel(winner);
+            isSpinning = false;
+          }
+        }
+
+        animate();
+      }
+
+      // ==================== UI ====================
+      function sortSlots() {
+        slots.sort((a, b) => b.value - a.value);
+      }
+
+      function addSlot() {
+        const name = "New Slot";
+        const value = 50;
+        const colors = ["#ff4444", "#ff6666", "#44ff88", "#4488ff", "#ffaa00", "#e91e63", "#9c27b0", "#00bcd4"];
+        slots.push({
+          name,
+          value,
+          color: colors[slots.length % colors.length],
+        });
+        sortSlots();
+        renderSlotList();
+        drawWheel();
+      }
+
+      function renderSlotList() {
+        sortSlots();
+        const container = document.getElementById("slotList");
+        container.innerHTML = "<h3>Candidates (higher value = bigger chance)</h3>";
+        slots.forEach((slot, i) => {
+          const el = document.createElement("div");
+          el.className = "slot";
+          el.innerHTML = `
+            <input type="text" value="${slot.name}" onchange="updateSlot(${i},'name',this.value)" style="flex:2">
+            <input type="number" value="${slot.value}" style="width:100px" onchange="updateSlot(${i},'value',this.value)">
+            <button onclick="removeSlot(${i})">✕</button>
+          `;
+          container.appendChild(el);
+        });
+      }
+
+      function updateSlot(i, field, val) {
+        if (field === "value") {
+          slots[i].value = Math.max(0.1, parseFloat(val) || 1);
+        } else {
+          slots[i].name = val;
+        }
+        sortSlots();
+        renderSlotList();
+        drawWheel();
+      }
+
+      function removeSlot(i) {
+        if (slots.length <= 1) return alert("Cannot remove the last slot");
+        slots.splice(i, 1);
+        sortSlots();
+        renderSlotList();
+        drawWheel();
+      }
+
+      function resetAll() {
+        if (confirm("Reset rotation and clear winner?")) {
+          currentRotation = 0;
+          document.getElementById("currentSlot").textContent = "Ready for spin...";
+          document.getElementById("winner").textContent = "";
+          sortSlots();
+          renderSlotList();
+          drawWheel();
+        }
+      }
+
+      // Init
+      sortSlots();
+      renderSlotList();
+      drawWheel();
+    </script>
+  </body>
+</html>
